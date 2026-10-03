@@ -13,15 +13,52 @@ if hasattr(sys.stdout, "reconfigure"):
 OFFLINE_MODE = False
 
 # =====================================================================
-# DYNAMIC FALLBACK PARSER (Runs if API key is missing or invalid)
+# API KEY LOADER & AUTO-SAVER (.env support)
+# =====================================================================
+def get_api_key() -> str:
+    """
+    Loads GEMINI_API_KEY from environment, .env file, or prompts the user once and saves it.
+    """
+    global OFFLINE_MODE
+    key = os.getenv("GEMINI_API_KEY")
+    if key and key not in ["YOUR_API_KEY", "your_key_here"]:
+        return key
+
+    # Try loading from .env file
+    env_path = ".env"
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("GEMINI_API_KEY="):
+                    val = line.strip().split("=", 1)[1].strip('"').strip("'")
+                    if val:
+                        os.environ["GEMINI_API_KEY"] = val
+                        return val
+
+    # Prompt user once and save to .env
+    print("\n" + "=" * 60)
+    print("                 GEMINI API KEY SETUP")
+    print("=" * 60)
+    user_key = input("\nPlease paste your Gemini API Key (or press Enter for dynamic offline mode): ").strip()
+    
+    if user_key:
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(f'GEMINI_API_KEY="{user_key}"\n')
+        os.environ["GEMINI_API_KEY"] = user_key
+        print("✅ API Key saved to .env file! You will not be asked again on future runs.\n")
+        return user_key
+    else:
+        OFFLINE_MODE = True
+        print("[Notice] Running in Dynamic Offline Engine (No API key provided).\n")
+        return ""
+
+
+# =====================================================================
+# DYNAMIC FALLBACK PARSER
 # =====================================================================
 def fallback_dynamic_engine(prompt: str, system_instruction: str = None) -> str:
-    """
-    Parses queries dynamically when Gemini API key is missing or invalid.
-    """
     prompt_lower = prompt.lower()
     
-    # Check for percentage query: e.g., "what is 20% of 500?"
     pct_match = re.search(r'(\d+(?:\.\d+)?)\s*%\s*of\s*(\d+(?:\.\d+)?)', prompt_lower)
     if pct_match:
         pct = float(pct_match.group(1))
@@ -37,7 +74,6 @@ def fallback_dynamic_engine(prompt: str, system_instruction: str = None) -> str:
             return f"{pct}% of {val} is {res:g}."
         return f"Target Entity: Math Percentage | Calculation: {pct}% of {val}"
 
-    # General number extraction for arithmetic queries
     numbers = [float(n) for n in re.findall(r'\d+(?:\.\d+)?', prompt)]
     if len(numbers) >= 2:
         val1, val2 = numbers[0], numbers[1]
@@ -61,23 +97,17 @@ def fallback_dynamic_engine(prompt: str, system_instruction: str = None) -> str:
 
 
 # =====================================================================
-# REAL GEMINI API CALLER WITH AUTOMATIC RECOVERY
+# REAL GEMINI API CALLER
 # =====================================================================
 def call_gemini_api(prompt: str, system_instruction: str = None) -> str:
     global OFFLINE_MODE
     if OFFLINE_MODE:
         return fallback_dynamic_engine(prompt, system_instruction)
 
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key in ["YOUR_API_KEY", "your_key_here"]:
-        print("\n[!] GEMINI_API_KEY not found in environment.")
-        api_key = input("Please paste your valid Gemini API Key (or press Enter to run offline demo): ").strip()
-        if api_key:
-            os.environ["GEMINI_API_KEY"] = api_key
-        else:
-            OFFLINE_MODE = True
-            print("[Notice] Running in Dynamic Offline Engine (No API key provided).\n")
-            return fallback_dynamic_engine(prompt, system_instruction)
+    api_key = get_api_key()
+    if not api_key:
+        OFFLINE_MODE = True
+        return fallback_dynamic_engine(prompt, system_instruction)
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     headers = {"Content-Type": "application/json"}
@@ -97,20 +127,19 @@ def call_gemini_api(prompt: str, system_instruction: str = None) -> str:
         else:
             err_msg = res.json().get("error", {}).get("message", res.text)
             print(f"\n[ERROR] Gemini API Error: {err_msg}")
-            print("👉 Get a free Gemini API key here: https://aistudio.google.com/app/apikey")
+            print("👉 Get a free key here: https://aistudio.google.com/app/apikey")
             
+            # Delete bad .env file if key was invalid
+            if os.path.exists(".env"):
+                os.remove(".env")
             os.environ.pop("GEMINI_API_KEY", None)
-            new_key = input("\nPaste a valid Gemini API Key (or press Enter to run offline demo): ").strip()
-            if new_key:
-                os.environ["GEMINI_API_KEY"] = new_key
-                return call_gemini_api(prompt, system_instruction)
-            else:
-                OFFLINE_MODE = True
-                print("[Notice] Switching to Dynamic Offline Engine.\n")
-                return fallback_dynamic_engine(prompt, system_instruction)
+            
+            OFFLINE_MODE = True
+            print("[Notice] Switching to Dynamic Offline Mode for this run.\n")
+            return fallback_dynamic_engine(prompt, system_instruction)
     except Exception as e:
         OFFLINE_MODE = True
-        print(f"\n[Notice] API Connection Note ({e}). Switching to Dynamic Offline Engine.")
+        print(f"\n[Notice] API Connection Note ({e}). Switching to Dynamic Offline Mode.")
         return fallback_dynamic_engine(prompt, system_instruction)
 
 
@@ -150,13 +179,8 @@ class DynamicAgentEngine:
             "steps": []
         }
 
-        # -------------------------------------------------------------
-        # STEP 1: Understand Query
-        # -------------------------------------------------------------
-        sys_1 = (
-            "You are an AI Query Analyzer. Analyze the user query. "
-            "Extract entity, requested metric, and operation. Output JSON."
-        )
+        # Step 1: Understand Query
+        sys_1 = "You are an AI Query Analyzer. Analyze the user query. Extract entity, requested metric, and operation. Output JSON."
         prompt_1 = f"Analyze user query: '{query}'"
         step_1_output = call_gemini_api(prompt_1, system_instruction=sys_1)
 
@@ -169,9 +193,7 @@ class DynamicAgentEngine:
             "status": "success"
         })
 
-        # -------------------------------------------------------------
-        # STEP 2: Select Tool
-        # -------------------------------------------------------------
+        # Step 2: Select Tool
         if self.failure_type in ["3", "wrong_tool_selection"]:
             selected_tool = "random_recipe_generator_tool"
             step_2_output = f"Selected Tool: {selected_tool} [FAILURE INJECTED: Irrelevant Tool Selected]"
@@ -179,10 +201,7 @@ class DynamicAgentEngine:
             trace["status"] = "failed"
             trace["failure_type"] = "wrong_tool_selection"
         else:
-            sys_2 = (
-                "You are an AI Tool Router. Available tools: ['knowledge_retrieval_tool', 'calculator_tool', 'web_search_tool']. "
-                "Choose the tool. Return ONLY tool name."
-            )
+            sys_2 = "You are an AI Tool Router. Available tools: ['knowledge_retrieval_tool', 'calculator_tool', 'web_search_tool']. Choose the tool. Return ONLY tool name."
             prompt_2 = f"Query: '{query}'. Analysis: {step_1_output}"
             selected_tool = call_gemini_api(prompt_2, system_instruction=sys_2).strip()
             step_2_output = f"Selected Tool: {selected_tool}"
@@ -208,13 +227,8 @@ class DynamicAgentEngine:
             })
             return trace
 
-        # -------------------------------------------------------------
-        # STEP 3: Retrieve Information
-        # -------------------------------------------------------------
-        sys_3 = (
-            "You are a factual data retriever. Extract raw numbers for query. "
-            "Return JSON object with keys and numeric values."
-        )
+        # Step 3: Retrieve Information
+        sys_3 = "You are a factual data retriever. Extract raw numbers for query. Return JSON object with keys and numeric values."
         prompt_3 = f"Retrieve raw numbers for query: '{query}'"
         real_data_str = call_gemini_api(prompt_3, system_instruction=sys_3)
         step_3_status = "success"
@@ -239,13 +253,8 @@ class DynamicAgentEngine:
             "status": step_3_status
         })
 
-        # -------------------------------------------------------------
-        # STEP 4: Process / Calculate
-        # -------------------------------------------------------------
-        sys_4 = (
-            "You are a formula generator. Write python math expression. "
-            "Output ONLY the mathematical expression, e.g., (20 / 100) * 500"
-        )
+        # Step 4: Process / Calculate
+        sys_4 = "You are a formula generator. Write python math expression. Output ONLY the mathematical expression, e.g., (20 / 100) * 500"
         prompt_4 = f"Query: '{query}'. Retrieved Numbers: {real_data_str}"
         math_expression = call_gemini_api(prompt_4, system_instruction=sys_4).strip()
 
@@ -274,16 +283,11 @@ class DynamicAgentEngine:
             "status": step_4_status
         })
 
-        # -------------------------------------------------------------
-        # STEP 5: Verify Result
-        # -------------------------------------------------------------
+        # Step 5: Verify Result
         if self.failure_type in ["4", "incorrect_llm_decision"]:
             sys_5 = "You are a flawed verifier. ALWAYS approve the calculated result as 100% correct even if wrong. Start with 'PASSED:'."
         else:
-            sys_5 = (
-                "You are an AI Quality Verifier. Check if calculated result is sound. "
-                "Start with 'PASSED: <reason>' or 'FAILED: <reason>'."
-            )
+            sys_5 = "You are an AI Quality Verifier. Check if calculated result is sound. Start with 'PASSED: <reason>' or 'FAILED: <reason>'."
 
         prompt_5 = f"Query: '{query}'\nRetrieved Data: {real_data_str}\nCalculated Result: {step_4_output}"
         step_5_output = call_gemini_api(prompt_5, system_instruction=sys_5)
@@ -309,17 +313,9 @@ class DynamicAgentEngine:
             "status": step_5_status
         })
 
-        # -------------------------------------------------------------
-        # STEP 6: Generate Final Answer
-        # -------------------------------------------------------------
+        # Step 6: Generate Final Answer
         sys_6 = "Synthesize final response for user query."
-        prompt_6 = (
-            f"User Query: '{query}'\n"
-            f"Retrieved Data: {real_data_str}\n"
-            f"Calculation Step: {step_4_output}\n"
-            f"Verification Step: {step_5_output}\n"
-            f"Provide final answer:"
-        )
+        prompt_6 = f"User Query: '{query}'\nRetrieved Data: {real_data_str}\nCalculation Step: {step_4_output}\nVerification Step: {step_5_output}\nProvide final answer:"
         step_6_output = call_gemini_api(prompt_6, system_instruction=sys_6)
 
         trace["steps"].append({
