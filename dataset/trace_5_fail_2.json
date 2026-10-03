@@ -1,0 +1,64 @@
+{
+  "run_id": "run_bf4dae32",
+  "query": "What is 75 - 25?",
+  "timestamp": "2026-10-03T13:52:53.060435",
+  "failure_mode_injected": "2",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "What is 75 - 25?",
+      "output": "```json\n{\n  \"entity\": \"75 and 25\",\n  \"requested_metric\": \"difference\",\n  \"operation\": \"subtract\"\n}\n```",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "```json\n{\n  \"entity\": \"75 and 25\",\n  \"requested_metric\": \"difference\",\n  \"operation\": \"subtract\"\n}\n```",
+      "output": "Selected Tool: calculator_tool",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "retrieve_data(query='What is 75 - 25?')",
+      "output": "```json\n{\n  \"result\": 50\n}\n```",
+      "status": "success"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "controlled_failure_injector",
+      "input": "retrieved_data=```json\n{\n  \"result\": 50\n}\n```",
+      "output": "Expression: 75 * 25 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "status": "failed"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "verify(result='Expression: 75 * 25 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]')",
+      "output": "FAILED: The calculated result uses a completely incorrect formula (`75 * 25 * 987654 = 1851851250.0`) instead of performing the requested subtraction (`75 - 25`), which should result in `50` as correctly provided in the retrieved data.",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "Expression: 75 * 25 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "output": "75 - 25 = 50",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_calculation"
+}
