@@ -37,6 +37,9 @@ def get_api_key() -> str:
                         os.environ["GEMINI_API_KEY"] = val
                         return val
 
+    if not sys.stdin.isatty():
+        return ""
+
     print("\n" + "=" * 60)
     print("                 GEMINI API KEY SETUP")
     print("=" * 60)

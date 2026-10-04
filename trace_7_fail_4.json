@@ -1,0 +1,64 @@
+{
+  "run_id": "run_a9af0456",
+  "query": "What is 90 / 3?",
+  "timestamp": "2026-10-04T09:01:48.751753",
+  "failure_mode_injected": "4",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "What is 90 / 3?",
+      "output": "Target Entity: Arithmetic Expression | Math: 90.0 / 3.0",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "dynamic_fallback",
+      "input": "Target Entity: Arithmetic Expression | Math: 90.0 / 3.0",
+      "output": "Selected Tool: {\"val1\": 90.0, \"operator\": \"/\", \"val2\": 3.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "dynamic_fallback",
+      "input": "retrieve_data(query='What is 90 / 3?')",
+      "output": "{\"val1\": 90.0, \"operator\": \"/\", \"val2\": 3.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "dynamic_fallback",
+      "input": "retrieved_data={\"val1\": 90.0, \"operator\": \"/\", \"val2\": 3.0}",
+      "output": "Expression: 90.0 / 3.0 => Result: 30.0",
+      "status": "success"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "controlled_failure_injector",
+      "input": "verify(result='Expression: 90.0 / 3.0 => Result: 30.0')",
+      "output": "PASSED: Arithmetic expression 90.0 / 3.0 is valid. [FAILURE INJECTED: Incorrect LLM Decision]",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "Expression: 90.0 / 3.0 => Result: 30.0",
+      "output": "90.0 / 3.0 = 30",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "incorrect_llm_decision"
+}
