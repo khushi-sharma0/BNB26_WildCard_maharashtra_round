@@ -1,0 +1,37 @@
+{
+  "run_id": "run_d8e426d7",
+  "query": "What is 60 * 2?",
+  "timestamp": "2026-10-04T09:01:48.465785",
+  "failure_mode_injected": "3",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "What is 60 * 2?",
+      "output": "Target Entity: Arithmetic Expression | Math: 60.0 * 2.0",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "controlled_failure_injector",
+      "input": "Target Entity: Arithmetic Expression | Math: 60.0 * 2.0",
+      "output": "Selected Tool: random_recipe_generator_tool [FAILURE INJECTED: Irrelevant Tool Selected]",
+      "status": "failed"
+    },
+    {
+      "step_id": 3,
+      "name": "execute_tool",
+      "type": "tool",
+      "source": "tool_executor",
+      "input": "random_recipe_generator_tool(query='What is 60 * 2?')",
+      "output": "Tool Execution Error: random_recipe_generator_tool cannot retrieve numerical data for calculation.",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_tool_selection"
+}

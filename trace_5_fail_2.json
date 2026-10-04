@@ -1,0 +1,64 @@
+{
+  "run_id": "run_1e3d4a69",
+  "query": "What is 75 - 25?",
+  "timestamp": "2026-10-04T09:01:48.177411",
+  "failure_mode_injected": "2",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "What is 75 - 25?",
+      "output": "Target Entity: Arithmetic Expression | Math: 75.0 - 25.0",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "dynamic_fallback",
+      "input": "Target Entity: Arithmetic Expression | Math: 75.0 - 25.0",
+      "output": "Selected Tool: {\"val1\": 75.0, \"operator\": \"-\", \"val2\": 25.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "dynamic_fallback",
+      "input": "retrieve_data(query='What is 75 - 25?')",
+      "output": "{\"val1\": 75.0, \"operator\": \"-\", \"val2\": 25.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "controlled_failure_injector",
+      "input": "retrieved_data={\"val1\": 75.0, \"operator\": \"-\", \"val2\": 25.0}",
+      "output": "Expression: 75.0 * 25.0 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "status": "failed"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "dynamic_fallback",
+      "input": "verify(result='Expression: 75.0 * 25.0 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]')",
+      "output": "PASSED: Arithmetic expression 75.0 - 25.0 is valid.",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "Expression: 75.0 * 25.0 * 987654 => Result: 1851851250.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "output": "75.0 - 25.0 = 50",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_calculation"
+}

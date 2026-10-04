@@ -1,6 +1,10 @@
 import subprocess
 import os
 import json
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # List of queries and failure modes to generate dataset
 dataset_queries = [
@@ -29,7 +33,7 @@ for idx, (query, fail_mode) in enumerate(dataset_queries, 1):
     print(f"\nGenerating Trace {idx} | Query: '{query}' | Fail Mode: {fail_mode}")
     
     cmd = [
-        "python3", "agent.py",
+        sys.executable, "agent.py",
         "--query", query,
         "--fail", fail_mode,
         "--output", filename

@@ -1,0 +1,64 @@
+{
+  "run_id": "run_df797a51",
+  "query": "What is 50 + 30?",
+  "timestamp": "2026-10-04T09:01:47.871755",
+  "failure_mode_injected": "1",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "What is 50 + 30?",
+      "output": "Target Entity: Arithmetic Expression | Math: 50.0 + 30.0",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "dynamic_fallback",
+      "input": "Target Entity: Arithmetic Expression | Math: 50.0 + 30.0",
+      "output": "Selected Tool: {\"val1\": 50.0, \"operator\": \"+\", \"val2\": 30.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "controlled_failure_injector",
+      "input": "retrieve_data(query='What is 50 + 30?')",
+      "output": "{\"val999999.0\": 49999950.0, \"operator\": \"+\", \"val1999998.0\": 29999970.0} [FAILURE INJECTED: Corrupted Retrieval Data]",
+      "status": "failed"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "dynamic_fallback",
+      "input": "retrieved_data={\"val999999.0\": 49999950.0, \"operator\": \"+\", \"val1999998.0\": 29999970.0} [FAILURE INJECTED: Corrupted Retrieval Data]",
+      "output": "Expression: 50.0 + 30.0 => Result: 80.0",
+      "status": "success"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "dynamic_fallback",
+      "input": "verify(result='Expression: 50.0 + 30.0 => Result: 80.0')",
+      "output": "PASSED: Arithmetic expression 50.0 + 30.0 is valid.",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "Expression: 50.0 + 30.0 => Result: 80.0",
+      "output": "50.0 + 30.0 = 80",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_retrieved_value"
+}

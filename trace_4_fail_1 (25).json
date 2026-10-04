@@ -1,0 +1,64 @@
+{
+  "run_id": "run_32cab2fc",
+  "query": "What is 50 + 30?",
+  "timestamp": "2026-10-03T13:52:22.938763",
+  "failure_mode_injected": "1",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "What is 50 + 30?",
+      "output": "```json\n{\n  \"entity\": \"50, 30\",\n  \"requested_metric\": \"sum\",\n  \"operation\": \"addition\"\n}\n```",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "```json\n{\n  \"entity\": \"50, 30\",\n  \"requested_metric\": \"sum\",\n  \"operation\": \"addition\"\n}\n```",
+      "output": "Selected Tool: calculator_tool",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "controlled_failure_injector",
+      "input": "retrieve_data(query='What is 50 + 30?')",
+      "output": "```json\n{\n  \"result\": 79999920.0\n}\n``` [FAILURE INJECTED: Corrupted Retrieval Data]",
+      "status": "failed"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "retrieved_data=```json\n{\n  \"result\": 79999920.0\n}\n``` [FAILURE INJECTED: Corrupted Retrieval Data]",
+      "output": "Expression: 50 + 30 => Result: 80.0",
+      "status": "success"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "verify(result='Expression: 50 + 30 => Result: 80.0')",
+      "output": "PASSED: The calculated result (80.0) correctly evaluates the mathematical expression \"50 + 30\", ignoring the corrupted retrieval data (79999920.0).",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "gemini_llm (gemini-flash-lite-latest)",
+      "input": "Expression: 50 + 30 => Result: 80.0",
+      "output": "50 + 30 = 80",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_retrieved_value"
+}

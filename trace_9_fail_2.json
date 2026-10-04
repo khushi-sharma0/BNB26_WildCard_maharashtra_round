@@ -1,0 +1,64 @@
+{
+  "run_id": "run_8fc7463d",
+  "query": "What is 10% of 500?",
+  "timestamp": "2026-10-04T09:01:49.335977",
+  "failure_mode_injected": "2",
+  "status": "failed",
+  "steps": [
+    {
+      "step_id": 1,
+      "name": "understand_query",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "What is 10% of 500?",
+      "output": "Target Entity: Math Percentage | Calculation: 10.0% of 500.0",
+      "status": "success"
+    },
+    {
+      "step_id": 2,
+      "name": "select_tool",
+      "type": "llm_decision",
+      "source": "dynamic_fallback",
+      "input": "Target Entity: Math Percentage | Calculation: 10.0% of 500.0",
+      "output": "Selected Tool: {\"percentage\": 10.0, \"base_value\": 500.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 3,
+      "name": "retrieve_information",
+      "type": "tool",
+      "source": "dynamic_fallback",
+      "input": "retrieve_data(query='What is 10% of 500?')",
+      "output": "{\"percentage\": 10.0, \"base_value\": 500.0}",
+      "status": "success"
+    },
+    {
+      "step_id": 4,
+      "name": "process_calculate",
+      "type": "calculation",
+      "source": "controlled_failure_injector",
+      "input": "retrieved_data={\"percentage\": 10.0, \"base_value\": 500.0}",
+      "output": "Expression: (10.0 / 100) * 500.0 + 88888888 => Result: 88888938.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "status": "failed"
+    },
+    {
+      "step_id": 5,
+      "name": "verify_result",
+      "type": "llm_verification",
+      "source": "dynamic_fallback",
+      "input": "verify(result='Expression: (10.0 / 100) * 500.0 + 88888888 => Result: 88888938.0 [FAILURE INJECTED: Corrupted Math Formula]')",
+      "output": "PASSED: 10.0% of 500.0 is calculated accurately.",
+      "status": "failed"
+    },
+    {
+      "step_id": 6,
+      "name": "generate_final_answer",
+      "type": "llm",
+      "source": "dynamic_fallback",
+      "input": "Expression: (10.0 / 100) * 500.0 + 88888888 => Result: 88888938.0 [FAILURE INJECTED: Corrupted Math Formula]",
+      "output": "10.0% of 500.0 is 50.",
+      "status": "failed"
+    }
+  ],
+  "failure_type": "wrong_calculation"
+}
